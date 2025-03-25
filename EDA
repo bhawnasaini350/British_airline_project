@@ -1,0 +1,117 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import squarify  # For tree map visualizations
+
+# Load the dataset
+d = pd.read_csv('clean_data.csv', encoding='latin1')
+
+# Grouping data by seat type and seat comfort, then counting occurrences
+df = d.groupby(['seat_type', 'seat_comfort']).agg(totle=('seat_comfort', 'count')).reset_index()
+
+# Grouping data by seat type and cabin staff service rating
+df1 = d.groupby(['seat_type', 'cabin_staff_service']).agg(totle=('cabin_staff_service', 'count')).reset_index()
+
+# Grouping data by seat type and food & beverages rating
+df2 = d.groupby(['seat_type', 'food_and_bevarges']).agg(totle=('food_and_bevarges', 'count')).reset_index()
+
+# Grouping data by seat type and value for money rating
+df3 = d.groupby(['seat_type', 'value_for_money']).agg(totle=('value_for_money', 'count')).reset_index()
+
+# Grouping data by seat type and recommendation status
+df4 = d.groupby(['seat_type', 'recommended']).agg(totle=('recommended', 'count')).reset_index()
+
+# Grouping data by seat type and overall rating count
+df8 = d.groupby(['seat_type', 'overall_rating']).agg(count=('overall_rating', 'count')).reset_index()
+print(df8)
+
+# Grouping data by type of traveler and overall rating count
+df81 = d.groupby(['type_of_travellar', 'overall_rating']).agg(count=('overall_rating', 'count')).reset_index()
+
+# Grouping data by type of traveler and calculating average overall rating
+df5 = d.groupby('type_of_travellar').agg(
+    totle=('type_of_travellar', 'count'),
+    overall_rating=('overall_rating', lambda x: x[x.between(1, 10)].mean())  # Only consider valid ratings
+).reset_index()
+print(df5)
+
+# Grouping data by aircraft and calculating average rating
+df6 = d.groupby('aircraft').agg(
+    count=('aircraft', 'count'),
+    avg_rating=('overall_rating', 'mean')
+).reset_index()
+
+# Sorting aircrafts by average rating in descending order
+df6 = df6.sort_values(by='avg_rating', ascending=False)
+
+# Grouping data by seat type and calculating average ratings for different aspects
+df7 = d.groupby('seat_type').agg(
+    count=('seat_type', 'count'),
+    avg_rating_comfort=('seat_comfort', lambda x: x[x.between(1, 5)].mean()),
+    avg_service=('cabin_staff_service', lambda x: x[x.between(1, 5)].mean()),
+    avg_food=('food_and_bevarges', lambda x: x[x.between(1, 5)].mean()),
+    avg_money=('value_for_money', lambda x: x[x.between(1, 5)].mean()),
+    avg_rating=('overall_rating', lambda x: x[x.between(1, 10)].mean())
+).reset_index()
+
+print(df7)
+
+# Convert overall rating to numeric (handling errors by coercing invalid values)
+d['overall_rating'] = pd.to_numeric(d['overall_rating'], errors='coerce')
+
+# Calculate and print the average overall rating
+average_rating = d['overall_rating'].mean()
+print(f"Average Overall Rating: {average_rating:.2f}")
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Reset index for plotting
+df_reset = df.reset_index()
+
+# Normalize data to get percentages within each seat type
+df_reset['percentage'] = df_reset.groupby('seat_type')['totle'].transform(lambda x: (x / x.sum()) * 100)
+
+# Create a bar chart for seat comfort distribution by seat type
+plt.figure(figsize=(10, 6))
+sns.barplot(data=df_reset, x='seat_type', y='percentage', hue='seat_comfort', palette="viridis")
+
+# Adding labels and styling
+plt.ylabel('Percentage (%)')
+plt.title('Seat Comfort Distribution by Seat Type', fontsize=14, fontweight='bold')
+plt.xticks(rotation=45)
+plt.legend(title='Seat Comfort')
+plt.ylim(0, 100)  # Limit Y-axis to 100% for readability
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+plt.show()
+
+# Create the figure for average rating by seat type
+plt.figure(figsize=(10, 6))
+
+# Use viridis color palette for visualization
+colors = sns.color_palette("viridis", len(df8))
+
+# Create the bar plot for average rating by seat type
+ax = sns.barplot(data=df8, x="seat_type", y="count", palette=colors)
+
+# Add data labels to each bar
+for p in ax.patches:
+    ax.annotate(f"{p.get_height():.2f}",  # Format value to 2 decimal places
+                (p.get_x() + p.get_width() / 2., p.get_height()), 
+                ha='center', va='bottom', fontsize=12, fontweight='bold')
+
+# Labels and title for the plot
+plt.xlabel("Seat Type")
+plt.ylabel("Average Rating")
+plt.title("Average Rating by Seat Type")
+
+# Adjust y-axis limits for better visualization
+plt.ylim(0, df8["count"].max() * 1.2)
+
+# Convert overall rating to numeric again for consistency
+d['overall_rating'] = pd.to_numeric(d['overall_rating'], errors='coerce')
+
+# Calculate and print the final average overall rating
+average_rating = d['overall_rating'].mean()
+print(f"Average Overall Rating: {average_rating:.2f}")
