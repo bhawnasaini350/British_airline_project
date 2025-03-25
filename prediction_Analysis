@@ -1,0 +1,82 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+from sklearn.svm import SVC
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression, LinearRegression
+
+# Load dataset
+df = pd.read_csv(r'C:\Users\hp\Desktop\skytrax\customer_booking.csv', encoding='latin1')
+
+# Split dataset into features (X) and target variable (y)
+X = df.drop('booking_complete', axis=1)  # Drop target column
+y = df['booking_complete']  # Target variable
+
+# Split data into training and testing sets (20% training, 80% testing)
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.2, random_state=2)
+
+# Map flight_day column from categorical (Mon-Sun) to numerical values (1-7)
+day_mapping = {'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7}
+X_train['flight_day'] = X_train['flight_day'].map(day_mapping)
+X_test['flight_day'] = X_test['flight_day'].map(day_mapping)
+
+# Encode categorical features using Ordinal Encoding
+categorical_columns = ['sales_channel', 'trip_type', 'route', 'booking_origin']
+encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)  # Handles new labels
+
+X_train[categorical_columns] = encoder.fit_transform(X_train[categorical_columns])
+X_test[categorical_columns] = encoder.transform(X_test[categorical_columns])  # Assigns -1 to unseen values
+
+# Fill missing values with 0
+X_train.fillna(0, inplace=True)
+X_test.fillna(0, inplace=True)
+
+# ------------------- Random Forest Model -------------------
+model = RandomForestClassifier(n_estimators=26)  # Create a Random Forest model with 26 decision trees
+model.fit(X_train, y_train)  # Train the model
+y_predict = model.predict(X_test)  # Predict on test data
+print("Random Forest Accuracy:", accuracy_score(y_test, y_predict))  # Print accuracy score
+
+# ------------------- K-Nearest Neighbors Model -------------------
+model = KNeighborsClassifier(n_neighbors=5)  # Create KNN model with 5 neighbors
+model.fit(X_train, y_train)  # Train the model
+y_predict = model.predict(X_test)  # Predict on test data
+print("K-Nearest Neighbors Accuracy:", accuracy_score(y_test, y_predict))  # Print accuracy score
+
+# ------------------- Logistic Regression Model -------------------
+model = LogisticRegression()
+model.fit(X_train, y_train)  # Train Logistic Regression model
+y_predict = model.predict(X_test)  # Predict on test data
+print("Logistic Regression Accuracy:", accuracy_score(y_test, y_predict))  # Print accuracy score
+
+# ------------------- Linear Regression Model (Not suitable for classification) -------------------
+model1 = LinearRegression()
+model1.fit(X_train, y_train)  # Train Linear Regression model
+y_predict1 = model1.predict(X_test)  # Predict on test data
+print(y_predict)  # Print predicted values (not meaningful for classification)
+# Accuracy is not meaningful for regression, this will likely cause an error
+# print(accuracy_score(y_test, y_predict1))  # Uncommenting this may cause an error
+
+# ------------------- Support Vector Machine (SVM) -------------------
+# Scale numerical features before training SVM for better performance
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Train SVM model with RBF kernel and balanced class weights
+svm_model = SVC(kernel='rbf', class_weight='balanced')
+svm_model.fit(X_train_scaled, y_train)
+y_pred_svm = svm_model.predict(X_test_scaled)
+print("SVM Classification Accuracy:", accuracy_score(y_test, y_pred_svm))  # Print accuracy score
+
+# ------------------- Gradient Boosting Classifier -------------------
+gb_classifier = GradientBoostingClassifier(n_estimators=200, learning_rate=0.05, max_depth=4, random_state=2)
+gb_classifier.fit(X_train, y_train)  # Train the model
+y_pred_gb = gb_classifier.predict(X_test)  # Predict on test data
+print("Gradient Boosting Classification Accuracy:", accuracy_score(y_test, y_pred_gb))  # Print accuracy score
