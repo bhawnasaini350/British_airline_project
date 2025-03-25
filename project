@@ -1,0 +1,111 @@
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import pandas as pd
+
+def collect_airline_reviews(air_name, max_pages=393):
+    """
+    Function to scrape airline reviews from AirlineQuality.com
+    Parameters:
+    - air_name (str): The name of the airline (e.g., 'British Airways')
+    - max_pages (int): Maximum number of pages to scrape (default=393)
+    
+    Returns:
+    - List of dictionaries containing review details
+    """
+    all_reviews = []  # List to store extracted reviews
+
+    for page in range(1, max_pages + 1):
+        # Construct the URL based on the page number
+        if page == 1:
+            url = f"https://www.airlinequality.com/airline-reviews/{air_name.lower().replace(' ', '-')}/"
+        else:
+            url = f"https://www.airlinequality.com/airline-reviews/{air_name.lower().replace(' ', '-')}/page/{page}/"
+
+        # Send HTTP GET request
+        response = requests.get(url)
+        if response.status_code != 200:  # Check if the request was successful
+            print(f"Failed to retrieve page {page} for {air_name}")
+            break  # Stop scraping if the page fails to load
+
+        # Parse the HTML content using BeautifulSoup
+        soup = BeautifulSoup(response.content, 'lxml')
+
+        # Find all review articles on the page
+        boxes = soup.find_all('article', attrs={'itemprop': 'review'})
+        if not boxes:  # If no reviews found, stop further scraping
+            print(f"No more reviews found on page {page} for {air_name}")
+            break
+
+        # Loop through each review box and extract data
+        for box in boxes:
+            review_data = {}  # Dictionary to store extracted details
+
+            # Extract the review title
+            title_tag = box.find('h2', attrs={'class': 'text_header'})
+            title = title_tag.get_text(strip=True) if title_tag else "Title Not Found"
+
+            # Extract the reviewer's name
+            name_tag = box.find('span', attrs={'itemprop': 'name'})
+            name = name_tag.get_text(strip=True) if name_tag else "Name Not Found"
+
+            # Extract the review date
+            review_date = box.find('time', attrs={'itemprop': 'datePublished'})
+            review_dt = review_date.get_text(strip=True) if review_date else "Review Date Not Found"
+
+            # Extract the review text
+            review = box.find('div', attrs={'class': 'text_content'})
+            review_text = review.get_text(strip=True) if review else "Review Not Found"
+
+            # Extract the overall rating
+            over_all_rating = box.find('span', attrs={'itemprop': 'ratingValue'})
+            whole_rating = over_all_rating.get_text(strip=True) if over_all_rating else "Rating Not Found"
+
+            # Extract individual ratings from the ratings table
+            ratings = {}
+            table = box.find('table', attrs={'class': 'review-ratings'})
+            if table:
+                table_rows = table.find_all('tr')  # Find all rating rows
+                for table_row in table_rows:
+                    table_data = table_row.find_all('td')
+                    if len(table_data) >= 2:
+                        key = table_data[0].get_text(strip=True)  # Category name
+                        value_td = table_data[1]
+
+                        # Count the number of filled stars in the rating
+                        if value_td.find('span'):
+                            value = len(value_td.find_all('span', attrs={'class': 'star fill'}))
+                        else:
+                            value = value_td.get_text(strip=True)  # Extract text value if no stars
+                        
+                        ratings[key] = value  # Store category rating
+
+            # Record the current timestamp when data is collected
+            recorded_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Store extracted data in dictionary
+            review_data['recorded_date'] = recorded_date
+            review_data['air_name'] = air_name
+            review_data['title'] = title
+            review_data['name'] = name
+            review_data['review_dt'] = review_dt
+            review_data['review'] = review_text
+            review_data['whole_rating'] = whole_rating
+            review_data['ratings'] = ratings  # Dictionary containing category-wise ratings
+
+            all_reviews.append(review_data)  # Append extracted data to list
+
+        print(f"Scraped page {page} for {air_name} ✅")  # Print progress update
+
+    return all_reviews  # Return the list of collected reviews
+
+# Example usage: Scraping reviews for "British Airways"
+reviews = collect_airline_reviews("British Airways", max_pages=393)
+
+# Convert extracted data into a Pandas DataFrame
+mydata = pd.json_normalize(reviews)
+
+# Save the extracted data to a CSV file
+mydata.to_csv('british_airways_reviews.csv')
+
+print("Data successfully saved to british_airways_reviews.csv ✅")
