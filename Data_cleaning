@@ -1,0 +1,51 @@
+import pandas as pd
+
+# Define column names for the dataset
+col_names = [
+    'recorded_date', 'air_name', 'title', 'name', 'review_dt', 'review', 'overall_rating',
+    'aircraft', 'type_of_travellar', 'seat_type', 'route', 'date_flown', 'seat_comfort',
+    'cabin_staff_service', 'food_and_bevarges', 'ground_service', 'value_for_money', 'recommended'
+]
+
+# Load the CSV file with the specified column names (excluding the first row as header)
+d = pd.read_csv(r'C:\Users\hp\Desktop\skytrax\british_airways_reviews.csv', encoding='latin1', names=col_names, header=0)
+
+# Clean the review column by removing '?' characters
+d['review'] = d['review'].str.replace('?', '')
+
+# Split the 'review' column into two parts: 'trip_verified' and 'review_by_customer' using the '|' delimiter
+d[['trip_verified', 'review_by_customer']] = d['review'].str.split('|', n=1, expand=True)
+
+# Strip any leading or trailing spaces from the 'review_by_customer' column
+d['review_by_customer'] = d['review_by_customer'].str.strip()
+
+# Remove double quotes from the 'title' column and strip any spaces
+d['title'] = d['title'].str.replace('"', '')
+d['title'] = d['title'].str.strip()
+
+# Fill missing values in numerical rating columns with 0
+d['seat_comfort'] = d['seat_comfort'].fillna(0)
+d['cabin_staff_service'] = d['cabin_staff_service'].fillna(0)
+d['food_and_bevarges'] = d['food_and_bevarges'].fillna(0)
+d['ground_service'] = d['ground_service'].fillna(0)
+
+# Convert the 'overall_rating' column to numeric, setting errors to 'coerce' to handle invalid values
+d['overall_rating'] = pd.to_numeric(d['overall_rating'], errors='coerce')
+d['overall_rating'] = d['overall_rating'].fillna(0)  # Fill NaN values with 0
+
+# Convert columns to appropriate data types
+d = d.astype({
+    'recorded_date': 'datetime64[ns]',  # Convert to datetime format
+    'review_dt': 'datetime64[ns]',  # Convert to datetime format
+    'overall_rating': 'int',  # Convert to integer
+    'seat_comfort': 'int',  # Convert to integer
+    'cabin_staff_service': 'int',  # Convert to integer
+    'food_and_bevarges': 'int',  # Convert to integer
+    'ground_service': 'int',  # Convert to integer
+    'value_for_money': 'int'  # Convert to integer
+})
+
+# Save the cleaned dataset to a new CSV file
+d.to_csv('clean_data.csv', index=False)
+
+print("Data cleaning and transformation complete. Saved as 'clean_data.csv'.")
